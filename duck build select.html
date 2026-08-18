@@ -1,0 +1,856 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>倒鴨大賽 Duck Dump Race</title>
+<style>
+  :root{
+    --sky:#EAF6FB;
+    --sky-2:#D8EEF7;
+    --pond:#C9E8DD;
+    --ink:#223047;
+    --ink-soft:#5C6B7A;
+    --amber:#F5A623;
+    --amber-dark:#B9760F;
+    --card:#FFFFFF;
+    --border:rgba(34,48,71,0.12);
+    --danger:#D8543A;
+    --green:#3B8F63;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:"Trebuchet MS","Segoe UI",-apple-system,BlinkMacSystemFont,sans-serif;
+    background:linear-gradient(180deg,var(--sky) 0%, var(--sky-2) 100%);
+    color:var(--ink);
+    min-height:100vh;
+    padding:24px 16px 60px;
+  }
+  .wrap{max-width:1280px;margin:0 auto;}
+  header{margin-bottom:20px;}
+  header h1{font-size:28px;margin:0;letter-spacing:-0.01em;}
+  header .sub{color:var(--ink-soft);font-size:14px;margin-top:2px;}
+  .layout{
+    display:grid;
+    grid-template-columns:340px 1fr;
+    gap:20px;
+    align-items:start;
+  }
+  @media (max-width:980px){ .layout{grid-template-columns:1fr;} }
+  .card{
+    background:var(--card);
+    border:1px solid var(--border);
+    border-radius:16px;
+    padding:18px 18px 20px;
+  }
+  .card + .card{margin-top:16px;}
+  .card h2{
+    font-size:15px;margin:0 0 12px;
+    display:flex;align-items:center;justify-content:space-between;
+  }
+  .card h2 .count{font-weight:normal;font-size:13px;color:var(--ink-soft);}
+  #groupList{
+    display:flex;flex-direction:column;gap:8px;
+    max-height:280px;overflow-y:auto;padding-right:4px;
+  }
+  .group-row{
+    display:grid;
+    grid-template-columns:30px 1fr 58px 28px 24px;
+    gap:6px;align-items:center;
+  }
+  .letter-badge{
+    width:28px;height:28px;border-radius:9px;
+    display:flex;align-items:center;justify-content:center;
+    font-weight:bold;font-size:12px;color:#fff;flex-shrink:0;
+  }
+  .group-row input[type="text"],.obs-row input[type="number"],.group-row input[type="number"],.size-row input[type="number"]{
+    width:100%;padding:6px 7px;border:1px solid var(--border);
+    border-radius:8px;font-size:12px;font-family:inherit;
+  }
+  .group-row input[type="color"],.obs-row input[type="color"]{
+    width:26px;height:26px;border:none;border-radius:8px;padding:0;background:none;cursor:pointer;
+  }
+  .remove-btn{
+    width:24px;height:24px;border-radius:8px;border:1px solid var(--border);
+    background:#fff;color:var(--danger);cursor:pointer;font-size:13px;line-height:1;
+  }
+  .remove-btn:hover{background:#FBEAE6;}
+  .actions-row{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;}
+  button{
+    font-family:inherit;border-radius:10px;border:1px solid var(--border);
+    background:#fff;padding:8px 13px;font-size:13px;cursor:pointer;color:var(--ink);
+  }
+  button:hover{background:#F3F6F8;}
+  button.primary{background:var(--amber);border-color:var(--amber-dark);color:#4A2E04;font-weight:bold;}
+  button.primary:hover{background:#f3a716;}
+  button:disabled{opacity:0.5;cursor:not-allowed;}
+  button.tiny{padding:6px 9px;font-size:12px;}
+  #totalNote{font-size:12px;color:var(--ink-soft);margin-top:8px;}
+  #trackWrap{display:flex;gap:18px;flex-wrap:wrap;}
+  canvas{background:var(--pond);border-radius:16px;display:block;max-width:100%;touch-action:none;}
+  #boardCard{flex:1;min-width:220px;}
+  #board{display:flex;flex-direction:column;gap:6px;max-height:360px;overflow-y:auto;}
+  .board-row{
+    display:flex;align-items:center;gap:8px;font-size:13px;padding:7px 10px;
+    border:1px solid var(--border);border-radius:10px;background:#fbfcfc;
+  }
+  .board-row .place{width:26px;text-align:center;font-weight:bold;}
+  .board-row .swatch{
+    width:20px;height:20px;border-radius:6px;color:#fff;font-size:11px;font-weight:bold;
+    display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  }
+  #statusLine{font-size:13px;color:var(--ink-soft);margin:10px 0 0;}
+  #emptyBoard{font-size:13px;color:var(--ink-soft);padding:6px 2px;}
+  .footer-note{margin-top:26px;font-size:12px;color:var(--ink-soft);text-align:center;}
+  .hint-note{font-size:12px;color:var(--ink-soft);margin-top:8px;line-height:1.5;}
+
+  .obs-type-badge{
+    font-size:11px;font-weight:bold;color:#fff;border-radius:7px;
+    padding:3px 7px;text-align:center;white-space:nowrap;
+  }
+  .obs-row{
+    border:1px solid var(--border);border-radius:10px;padding:8px;margin-bottom:8px;
+    display:flex;flex-direction:column;gap:6px;
+  }
+  .obs-row.selected{border-color:var(--amber-dark);background:#FFF8EC;}
+  .obs-row .obs-head{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+  .obs-fields{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
+  .obs-fields label{font-size:10px;color:var(--ink-soft);display:block;margin-bottom:2px;}
+  #obsList{max-height:230px;overflow-y:auto;padding-right:4px;}
+  #speedBtn{min-width:150px;font-weight:bold;}
+  .checkbox-row{display:flex;align-items:center;gap:8px;font-size:13px;margin-top:6px;}
+  .size-row{display:flex;align-items:center;gap:8px;margin-top:8px;}
+  .size-row label{font-size:12px;color:var(--ink-soft);white-space:nowrap;}
+  .size-row input{width:70px !important;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>🦆 倒鴨大賽</h1>
+    <div class="sub">卡車傾倒一整車小鴨,沿自訂河道彈跳競速,第一個抵達終點的分組獲勝</div>
+  </header>
+
+  <div class="layout">
+    <div>
+      <div class="card">
+        <h2>分組設定 <span class="count" id="groupCountLabel">0 / 26 組</span></h2>
+        <div id="groupList"></div>
+        <div class="actions-row">
+          <button id="addGroupBtn" class="tiny">+ 新增分組</button>
+          <button id="fillAzBtn" class="tiny">A–Z 全部填滿</button>
+        </div>
+        <div id="totalNote">總鴨子數:0</div>
+      </div>
+
+      <div class="card">
+        <h2>速度與畫布</h2>
+        <div class="actions-row" style="margin-top:0;">
+          <button id="speedBtn">速度:正常 (3/5)</button>
+        </div>
+        <div class="size-row">
+          <label>畫布寬</label>
+          <input type="number" id="canvasW" value="640" min="360" max="1200" step="10">
+          <label>高</label>
+          <input type="number" id="canvasH" value="720" min="420" max="1400" step="10">
+          <button class="tiny" id="applySize">套用尺寸</button>
+        </div>
+        <div class="checkbox-row">
+          <input type="checkbox" id="showPegs" checked>
+          <label for="showPegs">顯示預設釘樁區</label>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>河道障礙 / 陷阱</h2>
+        <div class="actions-row" style="margin-top:0;">
+          <button class="tiny" id="addRect">+ 長方形障礙</button>
+          <button class="tiny" id="addSquare">+ 正方形障礙</button>
+          <button class="tiny" id="addCircle">+ 圓形障礙</button>
+        </div>
+        <div class="actions-row">
+          <button class="tiny" id="addAccel">+ 加速方塊</button>
+          <button class="tiny" id="addBlackhole">+ 黑洞陷阱</button>
+        </div>
+        <div class="hint-note">在畫布上直接拖曳可移動物件;拖右下角方塊可縮放;拖上方圓點可旋轉(圓形/黑洞無旋轉)。也可用下方數字欄位微調。比賽進行中無法編輯。</div>
+        <div id="obsList" style="margin-top:10px;"></div>
+      </div>
+
+      <div class="card">
+        <div class="actions-row" style="margin-top:0;">
+          <button class="primary" id="startBtn">開始倒鴨比賽</button>
+          <button id="resetBtn">重新排列</button>
+        </div>
+        <div id="statusLine"></div>
+      </div>
+    </div>
+
+    <div id="trackWrap">
+      <canvas id="track" width="640" height="720"></canvas>
+      <div class="card" id="boardCard">
+        <h2>排行榜</h2>
+        <div id="board"><div id="emptyBoard">尚未開始比賽</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer-note">單一 HTML 檔案、無需伺服器,可直接開啟或部署至 GitHub Pages</div>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+const LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+const PALETTE = ["#F5A623","#3B8F63","#D8543A","#3B7FBF","#8A5CC9","#C9497A",
+                  "#2FA79B","#B98A1E","#5C7A2E","#B24E9B","#4B6FBF","#C77A2F",
+                  "#2E8F8F","#9A4B4B","#4E9E5C","#7A5CC9","#C9A63B","#3B6BA5",
+                  "#A65C2F","#5C8FC9","#9E4E7A","#3B9E7A","#C95C5C","#6B4E9E",
+                  "#4E9E9E","#8F6B3B"];
+
+let groups = [];
+function colorFor(letter){ return PALETTE[LETTERS.indexOf(letter) % PALETTE.length]; }
+function addGroup(letter, name, count){
+  if(groups.find(g=>g.letter===letter)) return;
+  groups.push({letter, name: name!==undefined?name:(letter+"隊"), count: count!==undefined?count:5, color: colorFor(letter)});
+  renderGroups();
+}
+function nextLetter(){ for(const l of LETTERS){ if(!groups.find(g=>g.letter===l)) return l; } return null; }
+function removeGroup(letter){ groups = groups.filter(g=>g.letter!==letter); renderGroups(); }
+
+function renderGroups(){
+  const list = document.getElementById('groupList');
+  list.innerHTML = '';
+  groups.forEach(g=>{
+    const row = document.createElement('div');
+    row.className = 'group-row';
+    row.innerHTML =
+      '<div class="letter-badge" style="background:'+g.color+'">'+g.letter+'</div>'+
+      '<input type="text" value="'+g.name.replace(/"/g,'&quot;')+'" data-letter="'+g.letter+'" data-field="name" maxlength="16">'+
+      '<input type="number" value="'+g.count+'" min="0" max="60" data-letter="'+g.letter+'" data-field="count">'+
+      '<input type="color" value="'+g.color+'" data-letter="'+g.letter+'" data-field="color">'+
+      '<button class="remove-btn" data-letter="'+g.letter+'" title="移除">✕</button>';
+    list.appendChild(row);
+  });
+  list.querySelectorAll('input').forEach(inp=>{
+    inp.addEventListener('input', (e)=>{
+      const letter = e.target.getAttribute('data-letter');
+      const field = e.target.getAttribute('data-field');
+      const g = groups.find(x=>x.letter===letter);
+      if(!g) return;
+      if(field==='name') g.name = e.target.value || (letter+"隊");
+      if(field==='count') g.count = Math.max(0, Math.min(60, parseInt(e.target.value||"0",10)));
+      if(field==='color'){ g.color = e.target.value; renderGroups(); }
+      updateTotalNote();
+    });
+  });
+  list.querySelectorAll('.remove-btn').forEach(btn=>{
+    btn.addEventListener('click', (e)=>{ removeGroup(e.target.getAttribute('data-letter')); updateTotalNote(); });
+  });
+  document.getElementById('groupCountLabel').textContent = groups.length + ' / 26 組';
+  document.getElementById('addGroupBtn').disabled = groups.length >= 26;
+  updateTotalNote();
+}
+function updateTotalNote(){
+  const total = groups.reduce((s,g)=>s+(g.count||0),0);
+  document.getElementById('totalNote').textContent = '總鴨子數:' + total;
+  document.getElementById('startBtn').disabled = total <= 0 || total > 300;
+}
+document.getElementById('addGroupBtn').addEventListener('click', ()=>{ const l = nextLetter(); if(l) addGroup(l, l+'隊', 5); });
+document.getElementById('fillAzBtn').addEventListener('click', ()=>{
+  groups = [];
+  LETTERS.forEach(l=> groups.push({letter:l, name:l+'隊', count: l==='A'?10 : (l==='B'?5:0), color: colorFor(l)}));
+  renderGroups();
+});
+addGroup('A','A隊',10);
+addGroup('B','B隊',5);
+
+// ---------------- Speed control ----------------
+const SPEED_LEVELS = [
+  {label:'極慢 (1/5)', mult:0.45},
+  {label:'慢 (2/5)', mult:0.7},
+  {label:'正常 (3/5)', mult:1.0},
+  {label:'快 (4/5)', mult:1.45},
+  {label:'極快 (5/5)', mult:1.9}
+];
+let speedIndex = 2;
+function updateSpeedBtn(){ document.getElementById('speedBtn').textContent = '速度:' + SPEED_LEVELS[speedIndex].label; }
+document.getElementById('speedBtn').addEventListener('click', ()=>{
+  speedIndex = (speedIndex+1) % SPEED_LEVELS.length;
+  updateSpeedBtn();
+});
+updateSpeedBtn();
+
+// ---------------- Canvas / track geometry (mutable for resize) ----------------
+const canvas = document.getElementById('track');
+const ctx = canvas.getContext('2d');
+let W = canvas.width, H = canvas.height;
+let wallL = 34, wallR = W-34;
+let finishY = H - 46;
+let truckY = 56;
+
+function recomputeGeometry(){
+  W = canvas.width; H = canvas.height;
+  wallL = 34; wallR = W-34;
+  finishY = H-46; truckY = 56;
+}
+
+document.getElementById('applySize').addEventListener('click', ()=>{
+  if(racing) return;
+  let nw = parseInt(document.getElementById('canvasW').value,10) || 640;
+  let nh = parseInt(document.getElementById('canvasH').value,10) || 720;
+  nw = Math.max(360, Math.min(1200, nw));
+  nh = Math.max(420, Math.min(1400, nh));
+  canvas.width = nw; canvas.height = nh;
+  recomputeGeometry();
+  buildPegs();
+  makeDucks();
+  drawScene();
+});
+
+// ---------------- Obstacle editor state ----------------
+let obstacles = [];
+let obsIdCounter = 0;
+const OBS_META = {
+  rect:      {label:'長方形障礙', color:'#5C6B7A'},
+  square:    {label:'正方形障礙', color:'#5C6B7A'},
+  circle:    {label:'圓形障礙',   color:'#5C6B7A'},
+  accel:     {label:'加速方塊',   color:'#F5A623'},
+  blackhole: {label:'黑洞陷阱',   color:'#1A1A2E'}
+};
+let selectedObsId = null;
+
+function addObstacle(type){
+  obsIdCounter++;
+  let o = {id:obsIdCounter, type, rot:0};
+  const cx = W/2, cy = H/2;
+  if(type==='rect'){ o.x=cx-60; o.y=cy-14; o.w=120; o.h=26; }
+  else if(type==='square'){ o.x=cx-24; o.y=cy-24; o.s=48; }
+  else if(type==='circle'){ o.x=cx; o.y=cy; o.r=24; }
+  else if(type==='accel'){ o.x=cx-50; o.y=cy+60; o.w=100; o.h=44; }
+  else if(type==='blackhole'){ o.x=cx; o.y=cy-90; o.r=26; }
+  obstacles.push(o);
+  selectedObsId = o.id;
+  renderObstacles();
+}
+function removeObstacle(id){
+  obstacles = obstacles.filter(o=>o.id!==id);
+  if(selectedObsId===id) selectedObsId = null;
+  renderObstacles();
+}
+
+function renderObstacles(){
+  const wrap = document.getElementById('obsList');
+  wrap.innerHTML = '';
+  obstacles.forEach(o=>{
+    const meta = OBS_META[o.type];
+    const row = document.createElement('div');
+    row.className = 'obs-row' + (o.id===selectedObsId ? ' selected' : '');
+    row.setAttribute('data-select', o.id);
+    let fieldsHtml = '';
+    if(o.type==='rect' || o.type==='accel'){
+      fieldsHtml =
+        '<div class="obs-fields">'+
+        '<div><label>X</label><input type="number" data-id="'+o.id+'" data-f="x" value="'+Math.round(o.x)+'"></div>'+
+        '<div><label>Y</label><input type="number" data-id="'+o.id+'" data-f="y" value="'+Math.round(o.y)+'"></div>'+
+        '<div><label>寬</label><input type="number" data-id="'+o.id+'" data-f="w" value="'+Math.round(o.w)+'"></div>'+
+        '<div><label>高</label><input type="number" data-id="'+o.id+'" data-f="h" value="'+Math.round(o.h)+'"></div>'+
+        '<div><label>旋轉(度)</label><input type="number" data-id="'+o.id+'" data-f="rotdeg" value="'+Math.round(o.rot*180/Math.PI)+'"></div>'+
+        '<div></div></div>';
+    } else if(o.type==='square'){
+      fieldsHtml =
+        '<div class="obs-fields">'+
+        '<div><label>X</label><input type="number" data-id="'+o.id+'" data-f="x" value="'+Math.round(o.x)+'"></div>'+
+        '<div><label>Y</label><input type="number" data-id="'+o.id+'" data-f="y" value="'+Math.round(o.y)+'"></div>'+
+        '<div><label>邊長</label><input type="number" data-id="'+o.id+'" data-f="s" value="'+Math.round(o.s)+'"></div>'+
+        '<div><label>旋轉(度)</label><input type="number" data-id="'+o.id+'" data-f="rotdeg" value="'+Math.round(o.rot*180/Math.PI)+'"></div>'+
+        '</div>';
+    } else {
+      fieldsHtml =
+        '<div class="obs-fields">'+
+        '<div><label>X</label><input type="number" data-id="'+o.id+'" data-f="x" value="'+Math.round(o.x)+'"></div>'+
+        '<div><label>Y</label><input type="number" data-id="'+o.id+'" data-f="y" value="'+Math.round(o.y)+'"></div>'+
+        '<div><label>半徑</label><input type="number" data-id="'+o.id+'" data-f="r" value="'+Math.round(o.r)+'"></div>'+
+        '<div></div></div>';
+    }
+    row.innerHTML =
+      '<div class="obs-head">'+
+      '<span class="obs-type-badge" style="background:'+meta.color+'">'+meta.label+'</span>'+
+      '<button class="remove-btn" data-remove="'+o.id+'">✕</button>'+
+      '</div>' + fieldsHtml;
+    wrap.appendChild(row);
+  });
+  wrap.querySelectorAll('input[type="number"]').forEach(inp=>{
+    inp.addEventListener('input', (e)=>{
+      const id = parseInt(e.target.getAttribute('data-id'),10);
+      const f = e.target.getAttribute('data-f');
+      const o = obstacles.find(x=>x.id===id);
+      if(!o) return;
+      if(f==='rotdeg'){ o.rot = (parseFloat(e.target.value||'0')) * Math.PI/180; }
+      else { o[f] = parseFloat(e.target.value || '0'); }
+      drawScene();
+    });
+  });
+  wrap.querySelectorAll('[data-remove]').forEach(btn=>{
+    btn.addEventListener('click', (e)=>{ e.stopPropagation(); removeObstacle(parseInt(e.target.getAttribute('data-remove'),10)); drawScene(); });
+  });
+  wrap.querySelectorAll('.obs-row').forEach(r=>{
+    r.addEventListener('click', ()=>{
+      selectedObsId = parseInt(r.getAttribute('data-select'),10);
+      renderObstacles(); drawScene();
+    });
+  });
+}
+
+document.getElementById('addRect').addEventListener('click', ()=>{ if(!racing){ addObstacle('rect'); drawScene(); } });
+document.getElementById('addSquare').addEventListener('click', ()=>{ if(!racing){ addObstacle('square'); drawScene(); } });
+document.getElementById('addCircle').addEventListener('click', ()=>{ if(!racing){ addObstacle('circle'); drawScene(); } });
+document.getElementById('addAccel').addEventListener('click', ()=>{ if(!racing){ addObstacle('accel'); drawScene(); } });
+document.getElementById('addBlackhole').addEventListener('click', ()=>{ if(!racing){ addObstacle('blackhole'); drawScene(); } });
+document.getElementById('showPegs').addEventListener('change', drawScene);
+
+// ---------------- Obstacle geometry helpers ----------------
+function rectOf(o){ if(o.type==='square') return {x:o.x,y:o.y,w:o.s,h:o.s}; return {x:o.x,y:o.y,w:o.w,h:o.h}; }
+function centerOf(o){
+  if(o.type==='circle' || o.type==='blackhole') return {x:o.x, y:o.y};
+  const r = rectOf(o);
+  return {x:r.x+r.w/2, y:r.y+r.h/2};
+}
+function rotateVec(lx,ly,rot){
+  const c = Math.cos(rot), s = Math.sin(rot);
+  return {x: lx*c - ly*s, y: lx*s + ly*c};
+}
+function resizeHandlePos(o){
+  if(o.type==='circle' || o.type==='blackhole') return {x:o.x+o.r, y:o.y};
+  const r = rectOf(o); const c = centerOf(o);
+  const v = rotateVec(r.w/2, r.h/2, o.rot||0);
+  return {x:c.x+v.x, y:c.y+v.y};
+}
+function rotateHandlePos(o){
+  if(o.type==='circle' || o.type==='blackhole') return null;
+  const r = rectOf(o); const c = centerOf(o);
+  const v = rotateVec(0, -(r.h/2+24), o.rot||0);
+  return {x:c.x+v.x, y:c.y+v.y};
+}
+function pointInObstacle(mx,my,o){
+  if(o.type==='circle' || o.type==='blackhole'){
+    const dx=mx-o.x, dy=my-o.y; return Math.sqrt(dx*dx+dy*dy) <= o.r;
+  }
+  const r = rectOf(o); const c = centerOf(o);
+  const dx = mx-c.x, dy = my-c.y;
+  const inv = rotateVec(dx,dy,-(o.rot||0));
+  return Math.abs(inv.x) <= r.w/2 && Math.abs(inv.y) <= r.h/2;
+}
+function dist(ax,ay,bx,by){ const dx=ax-bx, dy=ay-by; return Math.sqrt(dx*dx+dy*dy); }
+
+// ---------------- Mouse interaction (drag / resize / rotate) ----------------
+let dragMode = null; // 'move' | 'resize' | 'rotate'
+let dragObs = null;
+let dragStartMouse = {x:0,y:0};
+let dragSnapshot = null;
+
+function getMousePos(evt){
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = canvas.width / rect.width;
+  const scaleY = canvas.height / rect.height;
+  const cx = (evt.touches ? evt.touches[0].clientX : evt.clientX) - rect.left;
+  const cy = (evt.touches ? evt.touches[0].clientY : evt.clientY) - rect.top;
+  return {x: cx*scaleX, y: cy*scaleY};
+}
+
+canvas.addEventListener('mousedown', (e)=>{
+  if(racing) return;
+  const pos = getMousePos(e);
+  const sel = obstacles.find(o=>o.id===selectedObsId);
+  if(sel){
+    const rh = resizeHandlePos(sel);
+    if(dist(pos.x,pos.y,rh.x,rh.y) <= 10){
+      dragMode='resize'; dragObs=sel; dragStartMouse=pos;
+      dragSnapshot = {center: centerOf(sel), w: sel.type==='square'?sel.s:sel.w, h: sel.type==='square'?sel.s:sel.h, r: sel.r};
+      return;
+    }
+    const rot = rotateHandlePos(sel);
+    if(rot && dist(pos.x,pos.y,rot.x,rot.y) <= 10){
+      dragMode='rotate'; dragObs=sel; dragStartMouse=pos;
+      dragSnapshot = {center: centerOf(sel)};
+      return;
+    }
+  }
+  for(let i=obstacles.length-1;i>=0;i--){
+    if(pointInObstacle(pos.x,pos.y,obstacles[i])){
+      selectedObsId = obstacles[i].id;
+      dragMode='move'; dragObs=obstacles[i]; dragStartMouse=pos;
+      dragSnapshot = {x:obstacles[i].x, y:obstacles[i].y};
+      renderObstacles();
+      drawScene();
+      return;
+    }
+  }
+  selectedObsId = null;
+  renderObstacles();
+  drawScene();
+});
+
+window.addEventListener('mousemove', (e)=>{
+  if(!dragMode || !dragObs) {
+    if(!racing){
+      const rect = canvas.getBoundingClientRect();
+      if(e.clientX>=rect.left && e.clientX<=rect.right && e.clientY>=rect.top && e.clientY<=rect.bottom){
+        const pos = getMousePos(e);
+        let cursor = 'default';
+        const sel = obstacles.find(o=>o.id===selectedObsId);
+        if(sel){
+          const rh = resizeHandlePos(sel);
+          const rot = rotateHandlePos(sel);
+          if(dist(pos.x,pos.y,rh.x,rh.y)<=10) cursor='nwse-resize';
+          else if(rot && dist(pos.x,pos.y,rot.x,rot.y)<=10) cursor='grab';
+          else if(pointInObstacle(pos.x,pos.y,sel)) cursor='move';
+        }
+        canvas.style.cursor = cursor;
+      }
+    }
+    return;
+  }
+  const pos = getMousePos(e);
+  if(dragMode==='move'){
+    dragObs.x = dragSnapshot.x + (pos.x-dragStartMouse.x);
+    dragObs.y = dragSnapshot.y + (pos.y-dragStartMouse.y);
+  } else if(dragMode==='resize'){
+    if(dragObs.type==='circle' || dragObs.type==='blackhole'){
+      const r = dist(pos.x,pos.y,dragSnapshot.center.x,dragSnapshot.center.y);
+      dragObs.r = Math.max(10, Math.min(300, r));
+    } else {
+      const dx = pos.x-dragSnapshot.center.x, dy = pos.y-dragSnapshot.center.y;
+      const inv = rotateVec(dx,dy,-(dragObs.rot||0));
+      const neww = Math.max(16, Math.min(600, Math.abs(inv.x)*2));
+      const newh = Math.max(16, Math.min(600, Math.abs(inv.y)*2));
+      if(dragObs.type==='square'){
+        const s = Math.max(16, Math.min(600, (Math.abs(inv.x)+Math.abs(inv.y))));
+        dragObs.s = s;
+        dragObs.x = dragSnapshot.center.x - s/2;
+        dragObs.y = dragSnapshot.center.y - s/2;
+      } else {
+        dragObs.w = neww; dragObs.h = newh;
+        dragObs.x = dragSnapshot.center.x - neww/2;
+        dragObs.y = dragSnapshot.center.y - newh/2;
+      }
+    }
+  } else if(dragMode==='rotate'){
+    const dx = pos.x-dragSnapshot.center.x, dy = pos.y-dragSnapshot.center.y;
+    dragObs.rot = Math.atan2(dx, -dy);
+  }
+  drawScene();
+});
+
+window.addEventListener('mouseup', ()=>{
+  if(dragMode){ dragMode=null; dragObs=null; dragSnapshot=null; renderObstacles(); drawScene(); }
+});
+
+// ---------------- Race track pegs ----------------
+let pegs = [];
+function buildPegs(){
+  pegs = [];
+  const rows = 11;
+  for(let r=0;r<rows;r++){
+    const y = 150 + r*((finishY-220)/rows);
+    const cols = 9 + (r%2);
+    const spacing = (wallR-wallL)/(cols+1);
+    for(let c=1;c<=cols;c++){
+      const offset = (r%2===0)? 0 : spacing/2;
+      let x = wallL + spacing*c + offset*0.4;
+      if(x < wallL+16) x = wallL+16;
+      if(x > wallR-16) x = wallR-16;
+      pegs.push({x, y, r:5});
+    }
+  }
+}
+buildPegs();
+
+// ---------------- Ducks / race state ----------------
+let ducks = [];
+let racing = false;
+let finishedList = [];
+let consumedCount = 0;
+let idCounter = 0;
+
+function makeDucks(){
+  ducks = []; finishedList = []; consumedCount = 0; idCounter = 0;
+  let n = 0;
+  groups.forEach(g=>{
+    for(let i=0;i<g.count;i++){
+      n++;
+      ducks.push({
+        uid:n, letter:g.letter, name:g.name, color:g.color,
+        x: wallL + 30 + Math.random()*(wallR-wallL-60),
+        y: truckY - 10 - Math.random()*30,
+        vx:(Math.random()-0.5)*1.5, vy:0, r:8,
+        finished:false, consumed:false, place:0
+      });
+    }
+  });
+  renderBoard();
+}
+
+function renderBoard(){
+  const board = document.getElementById('board');
+  board.innerHTML = '';
+  if(finishedList.length===0){ board.innerHTML = '<div id="emptyBoard">尚未開始比賽</div>'; return; }
+  finishedList.forEach(d=>{
+    const row = document.createElement('div');
+    row.className = 'board-row';
+    const medal = d.place===1 ? '🥇' : d.place===2 ? '🥈' : d.place===3 ? '🥉' : String(d.place);
+    row.innerHTML =
+      '<span class="place">'+medal+'</span>'+
+      '<span class="swatch" style="background:'+d.color+'">'+d.letter+'</span>'+
+      '<span>'+d.name+' 第 '+d.place+' 名抵達</span>';
+    board.appendChild(row);
+  });
+  board.scrollTop = board.scrollHeight;
+}
+
+function drawTruck(dumping){
+  ctx.save();
+  const tx = W/2 - 60, ty = 6;
+  ctx.fillStyle = '#3B7FBF'; ctx.fillRect(tx, ty, 96, 34);
+  ctx.fillStyle = '#28588A'; ctx.fillRect(tx+96, ty+8, 26, 26);
+  ctx.fillStyle = '#223047';
+  ctx.beginPath(); ctx.arc(tx+22, ty+36, 7, 0, Math.PI*2); ctx.arc(tx+100, ty+36, 7, 0, Math.PI*2); ctx.fill();
+  if(dumping){
+    ctx.save(); ctx.translate(tx+48, ty+16); ctx.rotate(-0.35);
+    ctx.fillStyle = '#8A8F98'; ctx.fillRect(-32, -8, 64, 12);
+    ctx.restore();
+  }
+  ctx.restore();
+}
+
+function drawObstacles(){
+  obstacles.forEach(o=>{
+    ctx.save();
+    const isSel = o.id===selectedObsId;
+    if(o.type==='rect' || o.type==='square' || o.type==='accel'){
+      const r = rectOf(o); const c = centerOf(o);
+      ctx.translate(c.x, c.y); ctx.rotate(o.rot||0);
+      if(o.type==='accel'){
+        ctx.fillStyle = 'rgba(245,166,35,0.35)';
+        ctx.strokeStyle = '#F5A623'; ctx.lineWidth = 2; ctx.setLineDash([5,4]);
+        ctx.fillRect(-r.w/2,-r.h/2,r.w,r.h);
+        ctx.strokeRect(-r.w/2,-r.h/2,r.w,r.h);
+        ctx.setLineDash([]);
+        ctx.fillStyle = '#B9760F'; ctx.font = 'bold 11px sans-serif'; ctx.textAlign='center';
+        ctx.fillText('⚡加速', 0, 4);
+      } else {
+        ctx.fillStyle = '#5C6B7A';
+        ctx.fillRect(-r.w/2,-r.h/2,r.w,r.h);
+      }
+      if(isSel){
+        ctx.strokeStyle = '#B9760F'; ctx.lineWidth = 1.5; ctx.setLineDash([4,3]);
+        ctx.strokeRect(-r.w/2-4,-r.h/2-4,r.w+8,r.h+8);
+        ctx.setLineDash([]);
+      }
+      ctx.restore(); ctx.save();
+    } else if(o.type==='circle'){
+      ctx.fillStyle = '#5C6B7A';
+      ctx.beginPath(); ctx.arc(o.x, o.y, o.r, 0, Math.PI*2); ctx.fill();
+      if(isSel){ ctx.strokeStyle = '#B9760F'; ctx.lineWidth = 1.5; ctx.setLineDash([4,3]);
+        ctx.beginPath(); ctx.arc(o.x,o.y,o.r+5,0,Math.PI*2); ctx.stroke(); ctx.setLineDash([]); }
+    } else if(o.type==='blackhole'){
+      const grad = ctx.createRadialGradient(o.x,o.y,1,o.x,o.y,o.r);
+      grad.addColorStop(0,'#000000'); grad.addColorStop(1,'#3B3B55');
+      ctx.fillStyle = grad;
+      ctx.beginPath(); ctx.arc(o.x,o.y,o.r,0,Math.PI*2); ctx.fill();
+      ctx.strokeStyle = '#9A7BD9'; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.arc(o.x,o.y,o.r*0.6,0,Math.PI*1.4); ctx.stroke();
+      if(isSel){ ctx.strokeStyle = '#B9760F'; ctx.lineWidth = 1.5; ctx.setLineDash([4,3]);
+        ctx.beginPath(); ctx.arc(o.x,o.y,o.r+5,0,Math.PI*2); ctx.stroke(); ctx.setLineDash([]); }
+    }
+    ctx.restore();
+
+    if(isSel && !racing){
+      const rh = resizeHandlePos(o);
+      ctx.fillStyle = '#B9760F';
+      ctx.fillRect(rh.x-5, rh.y-5, 10, 10);
+      const rot = rotateHandlePos(o);
+      if(rot){
+        const c = centerOf(o);
+        ctx.strokeStyle = 'rgba(185,118,15,0.6)'; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(c.x,c.y); ctx.lineTo(rot.x,rot.y); ctx.stroke();
+        ctx.fillStyle = '#B9760F';
+        ctx.beginPath(); ctx.arc(rot.x,rot.y,6,0,Math.PI*2); ctx.fill();
+      }
+    }
+  });
+}
+
+function drawScene(){
+  ctx.clearRect(0,0,W,H);
+  ctx.strokeStyle = 'rgba(15,110,86,0.18)'; ctx.lineWidth = 2;
+  ctx.strokeRect(wallL, truckY+44, wallR-wallL, finishY-truckY-44);
+
+  if(document.getElementById('showPegs').checked){
+    pegs.forEach(p=>{
+      ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+      ctx.fillStyle = '#0F6E56'; ctx.globalAlpha = 0.55; ctx.fill(); ctx.globalAlpha = 1;
+    });
+  }
+
+  drawObstacles();
+
+  ctx.strokeStyle = '#3B8F63'; ctx.lineWidth = 2; ctx.setLineDash([7,7]);
+  ctx.beginPath(); ctx.moveTo(wallL, finishY); ctx.lineTo(wallR, finishY); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = '#223047'; ctx.font = '13px "Trebuchet MS", sans-serif'; ctx.textAlign='left';
+  ctx.fillText('終點', wallR-40, finishY-10);
+
+  drawTruck(racing && ducks.some(d=>!d.finished && !d.consumed && d.y < truckY+60));
+
+  ducks.forEach(d=>{
+    if(d.finished || d.consumed) return;
+    ctx.save(); ctx.translate(d.x, d.y);
+    ctx.fillStyle = d.color;
+    ctx.beginPath(); ctx.ellipse(0,0,d.r,d.r*0.85,0,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(0,-d.r*0.65,d.r*0.5,d.r*0.46,0,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#D8543A';
+    ctx.beginPath(); ctx.moveTo(d.r*0.35,-d.r*0.65); ctx.lineTo(d.r*1.05,-d.r*0.55); ctx.lineTo(d.r*0.35,-d.r*0.42); ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 9px "Trebuchet MS", sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText(d.letter, 0, 3);
+    ctx.restore();
+  });
+}
+
+function step(){
+  if(!racing){ drawScene(); return; }
+  const mult = SPEED_LEVELS[speedIndex].mult;
+
+  ducks.forEach(d=>{
+    if(d.finished || d.consumed) return;
+    d.vy += 0.22*mult;
+    d.vx += (Math.random()-0.5)*0.12;
+    d.vx *= 0.995;
+    d.vy = Math.min(d.vy, 8*mult);
+    d.x += d.vx*mult;
+    d.y += d.vy;
+
+    if(d.x - d.r < wallL){ d.x = wallL + d.r; d.vx = Math.abs(d.vx)*0.6 + 0.4; }
+    if(d.x + d.r > wallR){ d.x = wallR - d.r; d.vx = -Math.abs(d.vx)*0.6 - 0.4; }
+
+    if(document.getElementById('showPegs').checked){
+      pegs.forEach(p=>{
+        const dx = d.x-p.x, dy = d.y-p.y, distp = Math.sqrt(dx*dx+dy*dy), minDist = d.r+p.r;
+        if(distp < minDist && distp > 0.01){
+          const nx = dx/distp, ny = dy/distp, overlap = minDist-distp;
+          d.x += nx*overlap; d.y += ny*overlap;
+          const speed = Math.sqrt(d.vx*d.vx+d.vy*d.vy);
+          d.vx = nx*speed*0.7 + (Math.random()-0.5)*1.2;
+          d.vy = Math.max(ny*speed*0.5, 0.5);
+        }
+      });
+    }
+
+    obstacles.forEach(o=>{
+      if(o.type==='rect' || o.type==='square'){
+        const r = rectOf(o); const c = centerOf(o);
+        const dxw = d.x-c.x, dyw = d.y-c.y;
+        const inv = rotateVec(dxw,dyw,-(o.rot||0));
+        const cx = Math.max(-r.w/2, Math.min(inv.x, r.w/2));
+        const cy = Math.max(-r.h/2, Math.min(inv.y, r.h/2));
+        const ddx = inv.x-cx, ddy = inv.y-cy;
+        const distp = Math.sqrt(ddx*ddx+ddy*ddy);
+        if(distp < d.r){
+          if(distp > 0.01){
+            const nxL = ddx/distp, nyL = ddy/distp;
+            const worldN = rotateVec(nxL,nyL,o.rot||0);
+            const overlap = d.r-distp;
+            d.x += worldN.x*overlap; d.y += worldN.y*overlap;
+            const speed = Math.sqrt(d.vx*d.vx+d.vy*d.vy);
+            d.vx = worldN.x*speed*0.7 + (Math.random()-0.5)*1.2;
+            d.vy = Math.max(worldN.y*speed*0.5, 0.5);
+          } else {
+            d.y -= 4; d.vy = -Math.abs(d.vy)*0.5 - 0.5;
+          }
+        }
+      } else if(o.type==='circle'){
+        const dx = d.x-o.x, dy = d.y-o.y, distp = Math.sqrt(dx*dx+dy*dy), minDist = d.r+o.r;
+        if(distp < minDist && distp > 0.01){
+          const nx = dx/distp, ny = dy/distp, overlap = minDist-distp;
+          d.x += nx*overlap; d.y += ny*overlap;
+          const speed = Math.sqrt(d.vx*d.vx+d.vy*d.vy);
+          d.vx = nx*speed*0.7 + (Math.random()-0.5)*1.2;
+          d.vy = Math.max(ny*speed*0.5, 0.5);
+        }
+      } else if(o.type==='accel'){
+        const c = centerOf(o); const r = rectOf(o);
+        const dxw = d.x-c.x, dyw = d.y-c.y;
+        const inv = rotateVec(dxw,dyw,-(o.rot||0));
+        if(Math.abs(inv.x) < r.w/2 && Math.abs(inv.y) < r.h/2){ d.vy += 0.9; d.vx *= 1.03; }
+      } else if(o.type==='blackhole'){
+        const dx = d.x-o.x, dy = d.y-o.y, distp = Math.sqrt(dx*dx+dy*dy);
+        if(distp < o.r){ d.consumed = true; consumedCount++; }
+      }
+    });
+  });
+
+  for(let i=0;i<ducks.length;i++){
+    const d = ducks[i];
+    if(d.finished || d.consumed) continue;
+    for(let j=i+1;j<ducks.length;j++){
+      const o = ducks[j];
+      if(o.finished || o.consumed) continue;
+      const dx = d.x-o.x, dy = d.y-o.y, distp = Math.sqrt(dx*dx+dy*dy), minDist = d.r+o.r;
+      if(distp < minDist && distp > 0.01){
+        const nx = dx/distp, ny = dy/distp, overlap = (minDist-distp)/2;
+        d.x += nx*overlap; d.y += ny*overlap*0.3;
+        o.x -= nx*overlap; o.y -= ny*overlap*0.3;
+        d.vx += nx*0.25; o.vx -= nx*0.25;
+      }
+    }
+    if(d.y >= finishY && !d.finished){
+      d.finished = true; idCounter++; d.place = idCounter;
+      finishedList.push(d); renderBoard();
+    }
+  }
+
+  drawScene();
+
+  const statusEl = document.getElementById('statusLine');
+  const done = finishedList.length + consumedCount;
+  if(done >= ducks.length){
+    racing = false;
+    document.getElementById('startBtn').disabled = false;
+    if(finishedList.length>0){
+      const champ = finishedList[0];
+      statusEl.textContent = '🏁 比賽結束!冠軍是 '+champ.name+'('+champ.letter+' 隊)的一隻鴨子' + (consumedCount>0 ? '(另有 '+consumedCount+' 隻掉入黑洞)':'');
+    } else {
+      statusEl.textContent = '🏁 比賽結束!所有鴨子都掉入黑洞了,沒有冠軍。';
+    }
+  } else {
+    statusEl.textContent = '比賽進行中… 已抵達 '+finishedList.length+' / '+ducks.length + (consumedCount>0 ? '(黑洞吞噬 '+consumedCount+' 隻)':'');
+    requestAnimationFrame(step);
+  }
+}
+
+document.getElementById('startBtn').addEventListener('click', ()=>{
+  const total = groups.reduce((s,g)=>s+(g.count||0),0);
+  if(total<=0) return;
+  makeDucks();
+  racing = true;
+  selectedObsId = null;
+  renderObstacles();
+  document.getElementById('startBtn').disabled = true;
+  document.getElementById('statusLine').textContent = '比賽進行中…';
+  requestAnimationFrame(step);
+});
+document.getElementById('resetBtn').addEventListener('click', ()=>{
+  racing = false;
+  document.getElementById('startBtn').disabled = false;
+  makeDucks();
+  document.getElementById('statusLine').textContent = '';
+  drawScene();
+});
+
+makeDucks();
+drawScene();
+})();
+</script>
+</body>
+</html>
